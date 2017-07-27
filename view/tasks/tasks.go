@@ -12,8 +12,8 @@ import (
 )
 
 type task struct {
-	Done bool
-	Text string
+	Donetime time.Time
+	Text     string
 }
 
 type tasks []task
@@ -79,10 +79,10 @@ func saveTasks(db *bolt.DB, bucketName string, tasks tasks) {
 }
 
 func (t task) String() string {
-	if t.Done {
-		return "[✓] " + t.Text + " - done " + time.Now().Format("02/01/2006 15:04")
+	if t.Donetime.IsZero() {
+		return "[ ] " + t.Text
 	}
-	return "[ ] " + t.Text
+	return "[✓] " + t.Text + " - done " + t.Donetime.Format("02/01/2006 15:04")
 }
 
 func onItemActivated(db *bolt.DB, bucketName string) func(l *tui.List) {
@@ -90,7 +90,11 @@ func onItemActivated(db *bolt.DB, bucketName string) func(l *tui.List) {
 		s := l.Selected()
 		if s >= 0 {
 			ts := *getTasks(db, bucketName)
-			ts[s].Done = !ts[s].Done
+			if ts[s].Donetime.IsZero() {
+				ts[s].Donetime = time.Now()
+			} else {
+				ts[s].Donetime = time.Time{}
+			}
 			draw(ts, l)
 			l.Select(s)
 			saveTasks(db, bucketName, ts)
@@ -101,7 +105,7 @@ func onItemActivated(db *bolt.DB, bucketName string) func(l *tui.List) {
 func onSubmit(db *bolt.DB, bucketName string, l *tui.List) func(e *tui.Entry) {
 	return func(e *tui.Entry) {
 		if e.Text() != "" {
-			t := task{Done: false, Text: e.Text()}
+			t := task{Text: e.Text()}
 			ts := *getTasks(db, bucketName)
 			ts = append(ts, t)
 			draw(ts, l)
@@ -123,12 +127,28 @@ func initTaskList(db *bolt.DB, bucketName string, l *tui.List) {
 	}
 }
 
-func NewTaskBox(ui view.UI, name string, kbl string, kbe string) *tui.Box {
+func legendShortcut(kb string) tui.Widget {
+	k := tui.NewLabel("<" + kb + ">")
+	k.SetStyleName(view.StyleShortcut)
+	return k
+}
+
+func NewTaskBox(ui view.UI, name string, kbList string, kbEdit string, kbClear string) *tui.Box {
 	initBucket(ui.Db, name)
 	l := tui.NewList()
 	initTaskList(ui.Db, name, l)
 	l.OnItemActivated(onItemActivated(ui.Db, name))
-	ui.AddWidget(l, kbl)
+	ui.AddWidget(l, kbList)
+
+	legend := tui.NewHBox(
+		legendShortcut(kbList),
+		tui.NewPadder(1, 0, tui.NewLabel("Show list")),
+		legendShortcut(kbEdit),
+		tui.NewPadder(1, 0, tui.NewLabel("Add task")),
+		legendShortcut(kbClear),
+		tui.NewPadder(1, 0, tui.NewLabel("Delete done task")),
+		tui.NewSpacer(),
+	)
 
 	lb := tui.NewVBox(l)
 	lb.SetTitle(name)
@@ -138,14 +158,29 @@ func NewTaskBox(ui view.UI, name string, kbl string, kbe string) *tui.Box {
 	e := tui.NewEntry()
 	e.SetSizePolicy(tui.Expanding, tui.Maximum)
 	e.OnSubmit(onSubmit(ui.Db, name, l))
-	ui.AddWidget(e, kbe)
+	ui.AddWidget(e, kbEdit)
 
 	tb := tui.NewHBox(e)
 	tb.SetTitle("+ " + name)
 	tb.SetBorder(true)
 	tb.SetSizePolicy(tui.Expanding, tui.Maximum)
 
-	return tui.NewVBox(lb, tb)
+	ui.SetKeybinding(kbClear, func() {
+		clearDone(ui.Db, name, l)
+	})
+	return tui.NewVBox(lb, tb, legend)
+}
+
+func clearDone(db *bolt.DB, bucketName string, l *tui.List) {
+	tl := *getTasks(db, bucketName)
+	vtl := make(tasks, 0)
+	for _, t := range tl {
+		if t.Donetime.IsZero() {
+			vtl = append(vtl, t)
+		}
+	}
+	saveTasks(db, bucketName, vtl)
+	draw(vtl, l)
 }
 
 func draw(tl tasks, l *tui.List) {

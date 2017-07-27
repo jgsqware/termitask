@@ -33,7 +33,7 @@ func main() {
 	log.SetOutput(f)
 	ui := view.NewUI(ght)
 
-	tb := tasks.NewTaskBox(*ui, "Regular Tasks", "Ctrl+r", "Ctrl+f")
+	tb := tasks.NewTaskBox(*ui, "Regular Tasks", "Ctrl+r", "Ctrl+f", "Ctrl+c")
 	repoB := []tui.Widget{}
 	for _, v := range repos {
 		repoB = append(repoB, git.NewGitBox(*ui, v))

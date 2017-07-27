@@ -10,6 +10,8 @@ import (
 	"golang.org/x/oauth2"
 )
 
+const dbName = "termitask.db"
+
 type UI struct {
 	tui.UI
 
@@ -57,7 +59,7 @@ func NewUI(githubAuthToken string) *UI {
 		UI:           tui.New(root),
 		widgets:      []tui.Widget{},
 		GithubClient: initGithubClient(githubAuthToken),
-		Db:           initDB("my.db"),
+		Db:           initDB(dbName),
 	}
 	t := tui.DefaultTheme
 	t.SetStyle("label."+StyleGitID, tui.Style{Fg: tui.ColorRed})
@@ -65,6 +67,7 @@ func NewUI(githubAuthToken string) *UI {
 	t.SetStyle("label."+StyleGitAuthor, tui.Style{Fg: tui.ColorBlue})
 	t.SetStyle("label."+StyleGitIssues, tui.Style{Fg: tui.ColorRed})
 	t.SetStyle("label."+StyleGitPRS, tui.Style{Fg: tui.ColorYellow})
+	t.SetStyle("label."+StyleShortcut, tui.Style{Fg: tui.ColorCyan})
 	ui.SetTheme(t)
 
 	return &ui
@@ -85,4 +88,5 @@ const (
 	StyleGitAuthor = "git.author"
 	StyleGitIssues = "git.issues"
 	StyleGitPRS    = "git.prs"
+	StyleShortcut  = "shortcut"
 )
