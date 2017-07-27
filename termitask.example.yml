@@ -1,0 +1,5 @@
+repos:
+  - folder/to/project/1
+  - folder/to/project/2
+  - folder/to/project/3
+github_auth_token: <GITHUB_AUTH_TOKEN>
